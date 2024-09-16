@@ -1,4 +1,8 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Role, User } from 'src/entities/user.entity';
 import { Repository } from 'typeorm';
@@ -8,6 +12,7 @@ import { LoginDto } from './dtos/login.dto';
 import { AuthResponse } from 'src/interface/auth';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { RefreshTokenDto } from './dtos/refresh.dto';
 
 @Injectable()
 export class AuthService {
@@ -81,5 +86,36 @@ export class AuthService {
       token: token,
       refresh_token: refreshToken,
     };
+  }
+
+  async refresh(refreshDto: RefreshTokenDto): Promise<string> {
+    try {
+      const decoded = await this.jwtService.verifyAsync(
+        refreshDto.refresh_token,
+        {
+          secret: this.configService.get('REFRESH_SECRET_KEY'),
+        },
+      );
+
+      const user = await this.userRepository.findOneBy({ id: decoded.id });
+
+      if (!user || user.refresh_token !== refreshDto.refresh_token) {
+        throw new UnauthorizedException('Invalid or expired token');
+      }
+
+      const payload = {
+        id: user.id,
+        role: user.role,
+      };
+
+      const token = await this.jwtService.signAsync(payload, {
+        expiresIn: '20m',
+        secret: this.configService.get('SECRET_KEY'),
+      });
+
+      return token;
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
   }
 }

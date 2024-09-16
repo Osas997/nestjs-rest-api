@@ -5,6 +5,7 @@ import { WebResponse } from 'src/interface/web-response';
 import { AuthResponse } from 'src/interface/auth';
 import { LoginDto } from './dtos/login.dto';
 import { User } from 'src/common/decorator/user.decorator';
+import { RefreshTokenDto } from './dtos/refresh.dto';
 
 @Controller('/api/auth')
 export class AuthController {
@@ -27,6 +28,19 @@ export class AuthController {
     const user = await this.authService.login(loginDto);
     return {
       data: user,
+    };
+  }
+
+  @Post('/refresh')
+  @HttpCode(200)
+  async refresh(
+    @Body() refreshDto: RefreshTokenDto,
+  ): Promise<WebResponse<AuthResponse>> {
+    const token = await this.authService.refresh(refreshDto);
+    return {
+      data: {
+        token,
+      },
     };
   }
 
